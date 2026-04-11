@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {background:#0b0f1a;color:white;text-align:center;font-family:Arial;}
+.card {display:inline-block;background:#141a2e;margin:10px;padding:20px;border-radius:10px;}
+button {padding:10px;background:#00c853;color:white;border:none;}
+</style>
+
+</head>
+
+<body>
+
+<h1>VFG TaxRecon Dashboard</h1>
+
+<input type="file" id="fileInput">
+<button onclick="uploadFile()">Analyze</button>
+
+<div class="card"><h3>Total</h3><p id="total">0</p></div>
+<div class="card"><h3>Average</h3><p id="average">0</p></div>
+<div class="card"><h3>Transactions</h3><p id="transactions">0</p></div>
+<div class="card"><h3>VAT</h3><p id="vat">0</p></div>
+<div class="card"><h3>WHT</h3><p id="wht">0</p></div>
+<div class="card"><h3>CIT</h3><p id="cit">0</p></div>
+
+<div class="card" style="width:80%;">
+<h3>AI Insight</h3>
+<p id="insight"></p>
+</div>
+
+<canvas id="chart"></canvas>
+
+<script>
+function money(v){
+return "\u20A6"+Number(v).toLocaleString(undefined,{minimumFractionDigits:2});
+}
+
+async function uploadFile(){
+const file=document.getElementById("fileInput").files[0];
+if(!file){alert("Select file");return;}
+
+const fd=new FormData();
+fd.append("file",file);
+
+try{
+const res=await fetch("http://127.0.0.1:8000/api/upload",{method:"POST",body:fd});
+const data=await res.json();
+
+if(!data||data.error){alert(data?.error||"Error");return;}
+
+document.getElementById("total").innerText=money(data.total);
+document.getElementById("average").innerText=money(data.average);
+document.getElementById("transactions").innerText=data.count||0;
+document.getElementById("vat").innerText=money(data.vat);
+document.getElementById("wht").innerText=money(data.wht);
+document.getElementById("cit").innerText=money(data.cit);
+document.getElementById("insight").innerText=data.insight;
+
+drawChart(data);
+
+}catch(e){alert("Backend not reachable");}
+}
+
+function drawChart(d){
+new Chart(document.getElementById("chart"),{
+type:"bar",
+data:{
+labels:["Total","VAT","WHT","CIT"],
+datasets:[{label:"Summary",data:[d.total,d.vat,d.wht,d.cit]}]
+}
+});
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - TaxRecon</title>
+</head>
+<body style="font-family: Arial; text-align:center; margin-top:100px;">
+
+<h2>Login</h2>
+
+<input id="email" placeholder="Email"><br><br>
+<input id="password" type="password" placeholder="Password"><br><br>
+
+<button onclick="login()">Login</button>
+
+<script>
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch("http://127.0.0.1:8000/auth/login?email=" + email + "&password=" + password, {
+        method: "POST"
+    });
+
+    const data = await res.json();
+
+    localStorage.setItem("token", data.access_token);
+
+    window.location.href = "dashboard.html";
+}
+</script>
+
+</body>
+</html>
