@@ -56,7 +56,7 @@ async function pay() {
     formData.append("email", document.getElementById("payEmail").value);
     formData.append("amount", document.getElementById("amount").value);
 
-    let res = await fetch("https://YOUR_BACKEND_URL/pay", {
+    let res = await fetch("https://ai-financial-auditor-5w4l.vercel.app/login", {
         method: "POST",
         body: formData
     });

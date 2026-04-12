@@ -18,7 +18,7 @@ async function login() {
     formData.append("email", document.getElementById("email").value);
     formData.append("password", document.getElementById("password").value);
 
-    let res = await fetch("https://YOUR_BACKEND_URL/login", {
+    let res = await fetch("https://ai-financial-auditor-5w4l.vercel.app/login", {
         method: "POST",
         body: formData
     });
