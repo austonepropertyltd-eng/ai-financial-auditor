@@ -1,130 +1,69 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
-import openai
 import os
-from reportlab.pdfgen import canvas
+import pandas as pd
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# ✅ CORS (allow Netlify)
+# Allow frontend (Netlify)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ OpenAI Key (from Render ENV)
-import os
-openai.api_key = os.getenv("proj-1agjAqvEGzXTxrVyekCSbNfruBuLEpSWKelOfUhyCBr1quVdWc94pDM31zbP-65vqtJWwiNtfFT3BlbkFJ78BzhBGF7FeJSkBgW7nQO5fY17v-DkJkBS2qtGCUZ2q5mwoz4K7Gh8tbzIo3HRlECnlpXmwQoA")
-
-# ✅ Dummy users (for now)
-users = {
-    "admin@vfg.com": "123456"
-}
-
-# ✅ Store reports (temporary)
-reports = []
-usage_count = 0
-
-
 @app.get("/")
 def home():
-    return {"message": "VFG TaxRecon API Running"}
+    return {"message": "Backend running"}
 
-
-# 🔐 LOGIN
-@app.post("/api/login")
-def login(data: dict):
-    email = data.get("email")
-    password = data.get("password")
-
-    if users.get(email) == password:
-        return {"status": "success"}
-    else:
-        raise HTTPException(status_code=401, detail="Invalid login")
-
-
-# 📊 UPLOAD + AI ANALYSIS
-@app.post("/api/upload")
-async def upload(file: UploadFile = File(...)):
-    global usage_count
-
-    if usage_count > 5:
-        return {"error": "Free limit reached. Upgrade required."}
-
+@app.post("/analyze")
+async def analyze(file: UploadFile = File(...)):
     try:
-        df = pd.read_excel(file.file)
+        # Save file temporarily
+        file_path = f"temp_{file.filename}"
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
 
-        if "amount" not in df.columns:
-            return {"error": "Excel must contain 'amount' column"}
+        # Read Excel
+        df = pd.read_excel(file_path)
 
-        total = df["amount"].sum()
-        avg = df["amount"].mean()
-        count = len(df)
+        # 🔥 IMPORTANT: AUTO DETECT NUMERIC COLUMN
+        numeric_cols = df.select_dtypes(include=['number']).columns
+
+        if len(numeric_cols) == 0:
+            return {
+                "total": 0,
+                "average": 0,
+                "transactions": 0,
+                "vat": 0,
+                "wht": 0,
+                "cit": 0,
+                "ai_insight": "No numeric data found in file"
+            }
+
+        main_col = numeric_cols[0]  # take first numeric column
+
+        total = float(df[main_col].sum())
+        average = float(df[main_col].mean())
+        transactions = int(len(df))
 
         vat = total * 0.075
         wht = total * 0.05
         cit = total * 0.30
 
-        # 🤖 AI Insight (SAFE)
-        prompt = f"""
-        Analyze this financial data:
-        Total: {total}
-        Average: {avg}
-        Transactions: {count}
-        VAT: {vat}
-        WHT: {wht}
-        CIT: {cit}
+        # AI Insight (simple for now)
+        ai_insight = f"Processed {transactions} records. Total revenue is ₦{round(total,2)}."
 
-        Give a short professional financial insight.
-        """
-
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            insight = response.choices[0].message.content
-        except:
-            insight = "AI insight unavailable (check API key)."
-
-        result = {
-            "total": float(total),
-            "average": float(avg),
-            "transactions": count,
-            "vat": float(vat),
-            "wht": float(wht),
-            "cit": float(cit),
-            "insight": insight
+        return {
+            "total": total,
+            "average": average,
+            "transactions": transactions,
+            "vat": vat,
+            "wht": wht,
+            "cit": cit,
+            "ai_insight": ai_insight
         }
-
-        reports.append(result)
-        usage_count += 1
-
-        return result
 
     except Exception as e:
         return {"error": str(e)}
-
-
-# 📄 PDF REPORT
-@app.get("/api/report")
-def generate_pdf():
-    file_name = "report.pdf"
-    c = canvas.Canvas(file_name)
-
-    c.drawString(100, 750, "VFG TaxRecon Report")
-    c.drawString(100, 720, "AI Financial Analysis Report")
-
-    c.save()
-
-    return {"message": "PDF generated"}
-
-
-# 📊 HISTORY
-@app.get("/api/history")
-def history():
-    return reports
