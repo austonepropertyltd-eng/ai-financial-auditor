@@ -1,120 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>VFG TaxRecon AI Dashboard</title>
-
-    <style>
-        body {
-            background: #0f172a;
-            color: white;
-            font-family: Arial;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #22c55e;
-        }
-
-        input, button {
-            padding: 10px;
-            margin: 5px;
-        }
-
-        button {
-            background: #22c55e;
-            border: none;
-            color: black;
-            cursor: pointer;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 10px;
-        }
-    </style>
+<title>Login</title>
 </head>
-
 <body>
 
-<h1>🚀 VFG TaxRecon AI Dashboard</h1>
+<h2>Login</h2>
 
-<!-- FILE -->
-<input type="file" id="file">
+<input id="email" placeholder="Email">
+<input id="password" placeholder="Password" type="password">
 
-<button id="analyzeBtn" onclick="analyze()">Analyze</button>
-<button onclick="downloadPDF()">Download PDF</button>
-
-<!-- RESULTS -->
-<div class="grid">
-    <div class="card">Total: <span id="total">0</span></div>
-    <div class="card">Average: <span id="avg">0</span></div>
-    <div class="card">Transactions: <span id="trx">0</span></div>
-    <div class="card">VAT: <span id="vat">0</span></div>
-    <div class="card">WHT: <span id="wht">0</span></div>
-    <div class="card">CIT: <span id="cit">0</span></div>
-</div>
-
-<h3>🤖 AI Insight</h3>
-<p id="aiInsight">No analysis yet</p>
+<button onclick="login()">Login</button>
 
 <script>
-async function analyze() {
-    const fileInput = document.getElementById("file");
-    const btn = document.getElementById("analyzeBtn");
-
-    if (!fileInput.files.length) {
-        alert("Please select a file");
-        return;
-    }
-
+async function login() {
     const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    formData.append("email", document.getElementById("email").value);
+    formData.append("password", document.getElementById("password").value);
 
-    try {
-        btn.innerText = "Analyzing...";
-        btn.disabled = true;
+    let res = await fetch("https://YOUR_BACKEND_URL/login", {
+        method: "POST",
+        body: formData
+    });
 
-        const res = await fetch("https://vfg-taxrecon.onrender.com/analyze", {
-            method: "POST",
-            body: formData
-        });
+    let data = await res.json();
 
-        const data = await res.json();
-        console.log("Backend response:", data);
-
-        // DISPLAY DATA SAFELY
-        document.getElementById("total").innerText = "₦" + (data.total || 0).toLocaleString();
-        document.getElementById("avg").innerText = "₦" + (data.average || 0).toLocaleString();
-        document.getElementById("trx").innerText = data.transactions || 0;
-        document.getElementById("vat").innerText = "₦" + (data.vat || 0).toLocaleString();
-        document.getElementById("wht").innerText = "₦" + (data.wht || 0).toLocaleString();
-        document.getElementById("cit").innerText = "₦" + (data.cit || 0).toLocaleString();
-
-        // AI Insight
-        document.getElementById("aiInsight").innerText =
-            data.ai_insight || "No AI insight returned";
-
-    } catch (error) {
-        console.error(error);
-        alert("Error connecting to server");
-    } finally {
-        btn.innerText = "Analyze";
-        btn.disabled = false;
+    if (data.message) {
+        window.location.href = "dashboard.html";
+    } else {
+        alert("Login failed");
     }
-}
-
-// OPTIONAL
-function downloadPDF() {
-    alert("PDF feature coming next");
 }
 </script>
 
