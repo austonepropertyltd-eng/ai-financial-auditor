@@ -1,188 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VFG TaxRecon AI Dashboard</title>
+<title>VFG TaxRecon AI</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+    background: linear-gradient(135deg, #0b0f1a, #121826);
+    color: white;
+    font-family: Arial;
+    padding: 30px;
+}
 
-    <style>
-        body {
-            font-family: Arial;
-            background: #0b0f1a;
-            color: white;
-            padding: 30px;
-        }
+h1 {
+    color: #5ce1e6;
+}
 
-        h1 {
-            color: #5ce1e6;
-        }
+.card {
+    background: #1c2333;
+    padding: 20px;
+    border-radius: 12px;
+}
 
-        input, button {
-            padding: 10px;
-            margin-right: 10px;
-        }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
 
-        button {
-            background: #5ce1e6;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
+button {
+    background: #5ce1e6;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+}
 
-        #loading {
-            display: none;
-            color: yellow;
-        }
-
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background: #121826;
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        canvas {
-            margin-top: 30px;
-            background: #121826;
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        #insight-box {
-            margin-top: 30px;
-            background: #121826;
-            padding: 20px;
-            border-radius: 10px;
-        }
-    </style>
+#loginBox {
+    margin-bottom: 20px;
+}
+</style>
 </head>
 
 <body>
 
 <h1>🚀 VFG TaxRecon AI Dashboard</h1>
 
-<p>Upload Excel file to analyze financial data and generate AI insights.</p>
+<!-- LOGIN -->
+<div id="loginBox">
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
 
+<!-- FILE -->
 <input type="file" id="file">
-<button onclick="uploadFile()" id="btn">Analyze</button>
+<button onclick="upload()">Analyze</button>
+<button onclick="downloadPDF()">Download PDF</button>
 
-<p id="loading">⏳ Processing file...</p>
-
-<div class="cards">
-    <div class="card">Total <span id="total">0</span></div>
-    <div class="card">Average <span id="average">0</span></div>
-    <div class="card">Transactions <span id="transactions">0</span></div>
-    <div class="card">VAT <span id="vat">0</span></div>
-    <div class="card">WHT <span id="wht">0</span></div>
-    <div class="card">CIT <span id="cit">0</span></div>
+<div class="grid">
+    <div class="card">Total: <span id="total">0</span></div>
+    <div class="card">Average: <span id="avg">0</span></div>
+    <div class="card">Transactions: <span id="trx">0</span></div>
+    <div class="card">VAT: <span id="vat">0</span></div>
+    <div class="card">WHT: <span id="wht">0</span></div>
+    <div class="card">CIT: <span id="cit">0</span></div>
 </div>
 
 <canvas id="chart"></canvas>
 
-<div id="insight-box">
-    <h2>🤖 AI Insight</h2>
-    <p id="insight">Upload a file to get intelligent insights...</p>
-</div>
+<h2>🤖 AI Insight</h2>
+<p id="insight">No insight yet</p>
 
 <script>
 
 let chart;
 
-function money(v) {
+function login(){
+    alert("Login simulated (connect backend later)");
+}
+
+function money(v){
     return "₦" + Number(v).toLocaleString();
 }
 
-function generateInsight(data) {
-    let text = "";
+async function upload(){
 
-    if (data.total > 1000000)
-        text += "📈 Revenue is strong. ";
-
-    if (data.vat > data.total * 0.1)
-        text += "⚠️ VAT is high relative to revenue. ";
-
-    if (data.transactions < 100)
-        text += "📊 Low transaction count — growth opportunity. ";
-
-    if (data.cit > 1000000)
-        text += "🏢 High corporate tax exposure. ";
-
-    if (!text)
-        text = "✅ Financial performance is stable.";
-
-    return text;
-}
-
-async function uploadFile() {
-
-    const fileInput = document.getElementById("file");
-    const loading = document.getElementById("loading");
-    const btn = document.getElementById("btn");
-
-    if (!fileInput.files.length) {
-        alert("Select a file");
-        return;
-    }
-
-    loading.style.display = "block";
-    btn.disabled = true;
-    btn.innerText = "Analyzing...";
+    const file = document.getElementById("file").files[0];
 
     const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    formData.append("file", file);
 
-    try {
-        const res = await fetch("https://vfg-taxrecon.onrender.com/api/upload", {
-            method: "POST",
-            body: formData
-        });
+    const res = await fetch("https://vfg-taxrecon.onrender.com/api/upload",{
+        method:"POST",
+        body:formData
+    });
 
-        const data = await res.json();
+    const data = await res.json();
 
-        // Update UI
-        document.getElementById("total").innerText = money(data.total);
-        document.getElementById("average").innerText = money(data.average);
-        document.getElementById("transactions").innerText = data.transactions;
-        document.getElementById("vat").innerText = money(data.vat);
-        document.getElementById("wht").innerText = money(data.wht);
-        document.getElementById("cit").innerText = money(data.cit);
+    document.getElementById("total").innerText = money(data.total);
+    document.getElementById("avg").innerText = money(data.average);
+    document.getElementById("trx").innerText = data.transactions;
+    document.getElementById("vat").innerText = money(data.vat);
+    document.getElementById("wht").innerText = money(data.wht);
+    document.getElementById("cit").innerText = money(data.cit);
 
-        // Chart
-        if (chart) chart.destroy();
+    document.getElementById("insight").innerText = data.insight;
 
-        const ctx = document.getElementById("chart");
+    if(chart) chart.destroy();
 
-        chart = new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels: ["Total", "VAT", "WHT", "CIT"],
-                datasets: [{
-                    label: "Financial Data",
-                    data: [data.total, data.vat, data.wht, data.cit]
-                }]
-            }
-        });
+    chart = new Chart(document.getElementById("chart"),{
+        type:"bar",
+        data:{
+            labels:["Total","VAT","WHT","CIT"],
+            datasets:[{
+                data:[data.total,data.vat,data.wht,data.cit]
+            }]
+        }
+    });
+}
 
-        // AI Insight
-        document.getElementById("insight").innerText = generateInsight(data);
-
-        // OPTIONAL: REAL AI (Ready)
-        // You can later replace generateInsight with API call
-
-    } catch (e) {
-        alert("Error connecting to backend");
-    }
-
-    loading.style.display = "none";
-    btn.disabled = false;
-    btn.innerText = "Analyze";
+function downloadPDF(){
+    window.open("https://vfg-taxrecon.onrender.com/api/report");
 }
 
 </script>

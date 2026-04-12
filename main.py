@@ -1,11 +1,12 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-import io
+import openai
+from reportlab.pdfgen import canvas
 
 app = FastAPI()
 
-# ✅ Enable CORS (VERY IMPORTANT)
+# Allow frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,36 +15,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def home():
-    return {"message": "VFG TaxRecon Backend Running 🚀"}
+# 🔑 SET YOUR OPENAI KEY
+openai.api_key = "YOUR_OPENAI_KEY"
 
 
-# ✅ FULL UPLOAD ENDPOINT
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        df = pd.read_excel(io.BytesIO(contents))
+async def upload(file: UploadFile = File(...)):
+    df = pd.read_excel(file.file)
 
-        # ✅ Basic calculations
-        total = df.select_dtypes(include='number').sum().sum()
-        transactions = len(df)
-        average = total / transactions if transactions else 0
+    total = df["amount"].sum()
+    avg = df["amount"].mean()
+    count = len(df)
 
-        # Example tax calculations
-        vat = total * 0.075
-        wht = total * 0.05
-        cit = total * 0.30
+    vat = total * 0.075
+    wht = total * 0.05
+    cit = total * 0.30
 
-        return {
-            "total": float(total),
-             "average": float(average),
-                "transactions": len(df),  
-             "vat": float(vat),
-             "wht": float(wht),
-             "cit": float(cit)
-        }
+    # 🤖 AI Insight
+    prompt = f"""
+    Analyze this financial data:
+    Total: {total}
+    Average: {avg}
+    Transactions: {count}
+    VAT: {vat}
+    WHT: {wht}
+    CIT: {cit}
 
-    except Exception as e:
-        return {"error": str(e)}
+    Give professional financial insight.
+    """
+
+    ai = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    insight = ai.choices[0].message.content
+
+    return {
+        "total": float(total),
+        "average": float(avg),
+        "transactions": count,
+        "vat": float(vat),
+        "wht": float(wht),
+        "cit": float(cit),
+        "insight": insight
+    }
+
+
+# 📄 PDF DOWNLOAD
+@app.get("/api/report")
+def generate_pdf():
+    file = "report.pdf"
+    c = canvas.Canvas(file)
+
+    c.drawString(100, 750, "VFG TaxRecon Report")
+    c.drawString(100, 720, "Generated AI Financial Report")
+
+    c.save()
+
+    return {"message": "PDF Generated"}
