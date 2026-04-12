@@ -91,73 +91,52 @@
 <p id="insight">Upload a file to see intelligent analysis...</p>
 
     <script>
+async function analyze() {
+    const fileInput = document.querySelector('input[type="file"]');
+    const btn = document.getElementById("analyzeBtn");
 
-        function money(value) {
-            return "₦" + Number(value).toLocaleString();
-        }
+    if (!fileInput.files.length) {
+        alert("Please select a file");
+        return;
+    }
 
-        function generateInsight(data) {
-            let insight = "";
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
 
-            if (data.total > 1000000) {
-                insight += "📈 High revenue detected. ";
-            }
+    try {
+        // Show loading
+        btn.innerText = "Analyzing...";
+        btn.disabled = true;
 
-            if (data.vat > 500000) {
-                insight += "⚠️ VAT liability is significant. Ensure compliance. ";
-            }
+        const res = await fetch("https://vfg-taxrecon.onrender.com/analyze", {
+            method: "POST",
+            body: formData
+        });
 
-            if (data.transactions < 50) {
-                insight += "📊 Low transaction volume. Consider increasing activity. ";
-            }
+        const data = await res.json();
 
-            if (!insight) {
-                insight = "✅ Financial data looks balanced.";
-            }
+        console.log("Response:", data);
 
-            return insight;
-        }
+        // SAFETY FIX (avoid NaN)
+        document.getElementById("total").innerText = "₦" + (data.total || 0).toLocaleString();
+        document.getElementById("average").innerText = "₦" + (data.average || 0).toLocaleString();
+        document.getElementById("transactions").innerText = data.transactions || 0;
+        document.getElementById("vat").innerText = "₦" + (data.vat || 0).toLocaleString();
+        document.getElementById("wht").innerText = "₦" + (data.wht || 0).toLocaleString();
+        document.getElementById("cit").innerText = "₦" + (data.cit || 0).toLocaleString();
 
-        async function uploadFile() {
+        // AI Insight
+        document.getElementById("aiInsight").innerText = data.ai_insight || "No insight generated";
 
-            const fileInput = document.getElementById("file");
-            const loading = document.getElementById("loading");
-
-            if (!fileInput.files.length) {
-                alert("Please select a file");
-                return;
-            }
-
-            loading.style.display = "block";
-
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-
-            try {
-                const res = await fetch("https://vfg-taxrecon.onrender.com/api/upload", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const data = await res.json();
-
-                document.getElementById("total").innerText = money(data.total || 0);
-                document.getElementById("average").innerText = money(data.average || 0);
-                document.getElementById("transactions").innerText = data.transactions || 0;
-                document.getElementById("vat").innerText = money(data.vat || 0);
-                document.getElementById("wht").innerText = money(data.wht || 0);
-                document.getElementById("cit").innerText = money(data.cit || 0);
-
-                document.getElementById("insight").innerText = generateInsight(data);
-
-            } catch (error) {
-                alert("Error connecting to backend");
-            }
-
-            loading.style.display = "none";
-        }
-
-    </script>
+    } catch (error) {
+        console.error(error);
+        alert("Error analyzing file");
+    } finally {
+        btn.innerText = "Analyze";
+        btn.disabled = false;
+    }
+}
+</script>
 
 </body>
 </html>
