@@ -1,12 +1,13 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import openai
+import os
 from reportlab.pdfgen import canvas
 
 app = FastAPI()
 
-# Allow frontend
+# ✅ CORS (allow Netlify)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,62 +16,115 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔑 SET YOUR OPENAI KEY
-openai.api_key = "YOUR_OPENAI_KEY"
+# ✅ OpenAI Key (from Render ENV)
+import os
+openai.api_key = os.getenv("proj-1agjAqvEGzXTxrVyekCSbNfruBuLEpSWKelOfUhyCBr1quVdWc94pDM31zbP-65vqtJWwiNtfFT3BlbkFJ78BzhBGF7FeJSkBgW7nQO5fY17v-DkJkBS2qtGCUZ2q5mwoz4K7Gh8tbzIo3HRlECnlpXmwQoA")
+
+# ✅ Dummy users (for now)
+users = {
+    "admin@vfg.com": "123456"
+}
+
+# ✅ Store reports (temporary)
+reports = []
+usage_count = 0
 
 
+@app.get("/")
+def home():
+    return {"message": "VFG TaxRecon API Running"}
+
+
+# 🔐 LOGIN
+@app.post("/api/login")
+def login(data: dict):
+    email = data.get("email")
+    password = data.get("password")
+
+    if users.get(email) == password:
+        return {"status": "success"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid login")
+
+
+# 📊 UPLOAD + AI ANALYSIS
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
-    df = pd.read_excel(file.file)
+    global usage_count
 
-    total = df["amount"].sum()
-    avg = df["amount"].mean()
-    count = len(df)
+    if usage_count > 5:
+        return {"error": "Free limit reached. Upgrade required."}
 
-    vat = total * 0.075
-    wht = total * 0.05
-    cit = total * 0.30
+    try:
+        df = pd.read_excel(file.file)
 
-    # 🤖 AI Insight
-    prompt = f"""
-    Analyze this financial data:
-    Total: {total}
-    Average: {avg}
-    Transactions: {count}
-    VAT: {vat}
-    WHT: {wht}
-    CIT: {cit}
+        if "amount" not in df.columns:
+            return {"error": "Excel must contain 'amount' column"}
 
-    Give professional financial insight.
-    """
+        total = df["amount"].sum()
+        avg = df["amount"].mean()
+        count = len(df)
 
-    ai = openai.ChatCompletion.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
+        vat = total * 0.075
+        wht = total * 0.05
+        cit = total * 0.30
 
-    insight = ai.choices[0].message.content
+        # 🤖 AI Insight (SAFE)
+        prompt = f"""
+        Analyze this financial data:
+        Total: {total}
+        Average: {avg}
+        Transactions: {count}
+        VAT: {vat}
+        WHT: {wht}
+        CIT: {cit}
 
-    return {
-        "total": float(total),
-        "average": float(avg),
-        "transactions": count,
-        "vat": float(vat),
-        "wht": float(wht),
-        "cit": float(cit),
-        "insight": insight
-    }
+        Give a short professional financial insight.
+        """
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            insight = response.choices[0].message.content
+        except:
+            insight = "AI insight unavailable (check API key)."
+
+        result = {
+            "total": float(total),
+            "average": float(avg),
+            "transactions": count,
+            "vat": float(vat),
+            "wht": float(wht),
+            "cit": float(cit),
+            "insight": insight
+        }
+
+        reports.append(result)
+        usage_count += 1
+
+        return result
+
+    except Exception as e:
+        return {"error": str(e)}
 
 
-# 📄 PDF DOWNLOAD
+# 📄 PDF REPORT
 @app.get("/api/report")
 def generate_pdf():
-    file = "report.pdf"
-    c = canvas.Canvas(file)
+    file_name = "report.pdf"
+    c = canvas.Canvas(file_name)
 
     c.drawString(100, 750, "VFG TaxRecon Report")
-    c.drawString(100, 720, "Generated AI Financial Report")
+    c.drawString(100, 720, "AI Financial Analysis Report")
 
     c.save()
 
-    return {"message": "PDF Generated"}
+    return {"message": "PDF generated"}
+
+
+# 📊 HISTORY
+@app.get("/api/history")
+def history():
+    return reports
