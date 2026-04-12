@@ -3,6 +3,9 @@
 <head>
     <title>VFG TaxRecon AI Dashboard</title>
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: Arial;
@@ -13,10 +16,6 @@
 
         h1 {
             color: #5ce1e6;
-        }
-
-        .top {
-            margin-bottom: 20px;
         }
 
         input, button {
@@ -31,10 +30,6 @@
             font-weight: bold;
         }
 
-        button:disabled {
-            opacity: 0.6;
-        }
-
         #loading {
             display: none;
             color: yellow;
@@ -42,7 +37,7 @@
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin-top: 20px;
         }
@@ -53,15 +48,15 @@
             border-radius: 10px;
         }
 
-        .card span {
-            display: block;
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: bold;
+        canvas {
+            margin-top: 30px;
+            background: #121826;
+            padding: 20px;
+            border-radius: 10px;
         }
 
         #insight-box {
-            margin-top: 40px;
+            margin-top: 30px;
             background: #121826;
             padding: 20px;
             border-radius: 10px;
@@ -71,109 +66,126 @@
 
 <body>
 
-    <h1>🚀 VFG TaxRecon AI Dashboard</h1>
+<h1>🚀 VFG TaxRecon AI Dashboard</h1>
 
-    <p>
-        Upload your financial transactions (Excel file) to analyze revenue, taxes,
-        and get intelligent financial insights.
-    </p>
+<p>Upload Excel file to analyze financial data and generate AI insights.</p>
 
-    <div class="top">
-        <input type="file" id="file">
-        <button onclick="uploadFile()" id="btn">Analyze</button>
-    </div>
+<input type="file" id="file">
+<button onclick="uploadFile()" id="btn">Analyze</button>
 
-    <p id="loading">⏳ Processing file... please wait</p>
+<p id="loading">⏳ Processing file...</p>
 
-    <div class="cards">
-        <div class="card">Total <span id="total">0</span></div>
-        <div class="card">Average <span id="average">0</span></div>
-        <div class="card">Transactions <span id="transactions">0</span></div>
-        <div class="card">VAT <span id="vat">0</span></div>
-        <div class="card">WHT <span id="wht">0</span></div>
-        <div class="card">CIT <span id="cit">0</span></div>
-    </div>
+<div class="cards">
+    <div class="card">Total <span id="total">0</span></div>
+    <div class="card">Average <span id="average">0</span></div>
+    <div class="card">Transactions <span id="transactions">0</span></div>
+    <div class="card">VAT <span id="vat">0</span></div>
+    <div class="card">WHT <span id="wht">0</span></div>
+    <div class="card">CIT <span id="cit">0</span></div>
+</div>
 
-    <div id="insight-box">
-        <h2>AI Insight</h2>
-        <p id="insight">Upload a file to see intelligent analysis...</p>
-    </div>
+<canvas id="chart"></canvas>
 
-    <script>
+<div id="insight-box">
+    <h2>🤖 AI Insight</h2>
+    <p id="insight">Upload a file to get intelligent insights...</p>
+</div>
 
-        function money(value) {
-            return "₦" + Number(value).toLocaleString();
-        }
+<script>
 
-        function generateInsight(data) {
-            let insight = "";
+let chart;
 
-            if (data.total > 1000000) {
-                insight += "📈 Strong revenue performance detected. ";
+function money(v) {
+    return "₦" + Number(v).toLocaleString();
+}
+
+function generateInsight(data) {
+    let text = "";
+
+    if (data.total > 1000000)
+        text += "📈 Revenue is strong. ";
+
+    if (data.vat > data.total * 0.1)
+        text += "⚠️ VAT is high relative to revenue. ";
+
+    if (data.transactions < 100)
+        text += "📊 Low transaction count — growth opportunity. ";
+
+    if (data.cit > 1000000)
+        text += "🏢 High corporate tax exposure. ";
+
+    if (!text)
+        text = "✅ Financial performance is stable.";
+
+    return text;
+}
+
+async function uploadFile() {
+
+    const fileInput = document.getElementById("file");
+    const loading = document.getElementById("loading");
+    const btn = document.getElementById("btn");
+
+    if (!fileInput.files.length) {
+        alert("Select a file");
+        return;
+    }
+
+    loading.style.display = "block";
+    btn.disabled = true;
+    btn.innerText = "Analyzing...";
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    try {
+        const res = await fetch("https://vfg-taxrecon.onrender.com/api/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        // Update UI
+        document.getElementById("total").innerText = money(data.total);
+        document.getElementById("average").innerText = money(data.average);
+        document.getElementById("transactions").innerText = data.transactions;
+        document.getElementById("vat").innerText = money(data.vat);
+        document.getElementById("wht").innerText = money(data.wht);
+        document.getElementById("cit").innerText = money(data.cit);
+
+        // Chart
+        if (chart) chart.destroy();
+
+        const ctx = document.getElementById("chart");
+
+        chart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: ["Total", "VAT", "WHT", "CIT"],
+                datasets: [{
+                    label: "Financial Data",
+                    data: [data.total, data.vat, data.wht, data.cit]
+                }]
             }
+        });
 
-            if (data.vat > 500000) {
-                insight += "⚠️ High VAT liability — ensure compliance. ";
-            }
+        // AI Insight
+        document.getElementById("insight").innerText = generateInsight(data);
 
-            if (data.transactions < 50) {
-                insight += "📉 Low transaction volume — growth opportunity. ";
-            }
+        // OPTIONAL: REAL AI (Ready)
+        // You can later replace generateInsight with API call
 
-            if (!insight) {
-                insight = "✅ Financial performance looks stable.";
-            }
+    } catch (e) {
+        alert("Error connecting to backend");
+    }
 
-            return insight;
-        }
+    loading.style.display = "none";
+    btn.disabled = false;
+    btn.innerText = "Analyze";
+}
 
-        async function uploadFile() {
-
-            const fileInput = document.getElementById("file");
-            const loading = document.getElementById("loading");
-            const btn = document.getElementById("btn");
-
-            if (!fileInput.files.length) {
-                alert("Please select a file");
-                return;
-            }
-
-            // UI feedback
-            loading.style.display = "block";
-            btn.innerText = "Analyzing...";
-            btn.disabled = true;
-
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-
-            try {
-                const res = await fetch("https://vfg-taxrecon.onrender.com/api/upload", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const data = await res.json();
-
-                document.getElementById("total").innerText = money(data.total || 0);
-                document.getElementById("average").innerText = money(data.average || 0);
-                document.getElementById("transactions").innerText = data.transactions || 0;
-                document.getElementById("vat").innerText = money(data.vat || 0);
-                document.getElementById("wht").innerText = money(data.wht || 0);
-                document.getElementById("cit").innerText = money(data.cit || 0);
-
-                document.getElementById("insight").innerText = generateInsight(data);
-
-            } catch (error) {
-                alert("Error connecting to backend");
-            }
-
-            // Reset UI
-            loading.style.display = "none";
-            btn.innerText = "Analyze";
-            btn.disabled = false;
-        }
-
-    </script>
+</script>
 
 </body>
 </html>
