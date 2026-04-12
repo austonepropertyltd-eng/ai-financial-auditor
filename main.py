@@ -2,10 +2,12 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
+import os
+from openai import OpenAI
 
 app = FastAPI()
 
-# Allow frontend (Netlify) to talk to backend (Render)
+# Allow frontend (Vercel) to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,32 +16,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# OpenAI setup
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+@app.get("/")
+def home():
+    return {"message": "VFG TaxRecon API Running"}
+
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     contents = await file.read()
-
-    # Read Excel
     df = pd.read_excel(io.BytesIO(contents))
 
-    # Normalize column names
-    df.columns = [col.strip().lower() for col in df.columns]
-
-    # Ensure amount column exists
-    if "amount" not in df.columns:
-        return {"error": "Amount column not found"}
-
-    # Clean amount values
-    df["amount"] = (
-        df["amount"]
+    # Clean Amount column
+    df["Amount"] = (
+        df["Amount"]
         .astype(str)
-        .str.replace(",", "")
-        .str.replace("₦", "")
+        .str.replace(",", "", regex=False)
+        .astype(float)
     )
 
-    df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
-
-    # Calculations
-    total = df["amount"].sum()
+    total = df["Amount"].sum()
     transactions = len(df)
     average = total / transactions if transactions > 0 else 0
 
@@ -47,14 +44,30 @@ async def analyze(file: UploadFile = File(...)):
     wht = total * 0.05
     cit = total * 0.30
 
-    # SAFE AI INSIGHT (NO BREAK)
-    ai_insight = f"""Analysis completed for {transactions} transactions.
-Total revenue: ₦{total:,.2f}.
-VAT (7.5%): ₦{vat:,.2f}.
-WHT (5%): ₦{wht:,.2f}.
-CIT (30%): ₦{cit:,.2f}.
+    # =========================
+    # REAL AI INSIGHT
+    # =========================
+    prompt = f"""
+    You are a financial analyst.
 
-Insight: Your business shows strong financial activity. Ensure proper tax remittance and monitor high expense categories."""
+    Analyze this business data:
+    Total Revenue: {total}
+    VAT: {vat}
+    WHT: {wht}
+    CIT: {cit}
+    Transactions: {transactions}
+
+    Give a short professional insight.
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        ai_insight = response.choices[0].message.content
+    except:
+        ai_insight = "AI insight unavailable"
 
     return {
         "total": total,
