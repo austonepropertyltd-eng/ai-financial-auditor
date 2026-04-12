@@ -1,11 +1,10 @@
-import os
 import pandas as pd
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Allow frontend (Netlify)
+# Allow frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,14 +12,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def home():
-    return {"message": "Backend running"}
-
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     try:
-        # Save file temporarily
+        # Save file
         file_path = f"temp_{file.filename}"
         with open(file_path, "wb") as f:
             f.write(await file.read())
@@ -28,32 +23,34 @@ async def analyze(file: UploadFile = File(...)):
         # Read Excel
         df = pd.read_excel(file_path)
 
-        # 🔥 IMPORTANT: AUTO DETECT NUMERIC COLUMN
-        numeric_cols = df.select_dtypes(include=['number']).columns
+        # 🔥 FORCE CLEAN "Amount" COLUMN
+        if "Amount" not in df.columns:
+            return {"error": "Amount column not found"}
 
-        if len(numeric_cols) == 0:
-            return {
-                "total": 0,
-                "average": 0,
-                "transactions": 0,
-                "vat": 0,
-                "wht": 0,
-                "cit": 0,
-                "ai_insight": "No numeric data found in file"
-            }
+        df["Amount"] = (
+            df["Amount"]
+            .astype(str)
+            .str.replace(",", "", regex=False)
+            .str.replace("₦", "", regex=False)
+        )
 
-        main_col = numeric_cols[0]  # take first numeric column
+        df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
 
-        total = float(df[main_col].sum())
-        average = float(df[main_col].mean())
+        # CALCULATIONS
+        total = float(df["Amount"].sum())
+        average = float(df["Amount"].mean())
         transactions = int(len(df))
 
         vat = total * 0.075
         wht = total * 0.05
         cit = total * 0.30
 
-        # AI Insight (simple for now)
-        ai_insight = f"Processed {transactions} records. Total revenue is ₦{round(total,2)}."
+        # SIMPLE AI INSIGHT
+        ai_insight = (
+            f"You processed {transactions} transactions. "
+            f"Total revenue is ₦{round(total,2)}. "
+            f"VAT is ₦{round(vat,2)}."
+        )
 
         return {
             "total": total,
