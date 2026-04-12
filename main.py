@@ -4,7 +4,7 @@ import pandas as pd
 
 app = FastAPI()
 
-# Allow frontend access
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,18 +15,16 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"status": "API is running"}
+    return {"message": "API is working"}
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     try:
         df = pd.read_excel(file.file)
 
-        # Ensure Amount column exists
         if "Amount" not in df.columns:
-            return {"error": "Excel must contain 'Amount' column"}
+            return {"error": "Missing 'Amount' column"}
 
-        # Clean amounts (remove commas)
         df["Amount"] = df["Amount"].astype(str).str.replace(",", "")
         df["Amount"] = df["Amount"].astype(float)
 
@@ -38,15 +36,14 @@ async def analyze(file: UploadFile = File(...)):
         wht = total * 0.05
         cit = total * 0.30
 
-        ai_insight = f"""
-Analysis completed for {transactions} transactions.
-Total revenue: ₦{total:,.2f}
-VAT (7.5%): ₦{vat:,.2f}
-WHT (5%): ₦{wht:,.2f}
-CIT (30%): ₦{cit:,.2f}
-
-Insight: Your business shows strong financial activity. Ensure proper tax remittance.
-"""
+        ai_insight = (
+            "Analysis completed for " + str(transactions) + " transactions.\n"
+            "Total revenue: ₦" + format(total, ",.2f") + "\n"
+            "VAT (7.5%): ₦" + format(vat, ",.2f") + "\n"
+            "WHT (5%): ₦" + format(wht, ",.2f") + "\n"
+            "CIT (30%): ₦" + format(cit, ",.2f") + "\n\n"
+            "Insight: Your business shows strong financial activity."
+        )
 
         return {
             "total": total,
