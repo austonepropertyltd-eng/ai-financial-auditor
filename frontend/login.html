@@ -31,6 +31,8 @@ async function loginUser() {
 
         const data = await res.json();
 
+        console.log(data); // DEBUG
+
         if (data.status === "success") {
             alert("Login successful");
             window.location.href = "dashboard.html";
@@ -39,8 +41,8 @@ async function loginUser() {
         }
 
     } catch (error) {
+        console.error(error);
         alert("Backend not reachable");
-        console.log(error);
     }
 }
 </script>
