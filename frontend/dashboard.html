@@ -5,64 +5,7 @@
 </head>
 <body>
 
-<h2>VFG TaxRecon AI Dashboard</h2>
-
-<input type="file" id="file">
-<button onclick="analyze()">Analyze</button>
-
-<p>Total: <span id="total"></span></p>
-<p>Average: <span id="avg"></span></p>
-<p>Transactions: <span id="trx"></span></p>
-<p>VAT: <span id="vat"></span></p>
-<p>WHT: <span id="wht"></span></p>
-<p>CIT: <span id="cit"></span></p>
-
-<pre id="ai"></pre>
-
-<script>
-const API = "https://vfg-taxrecon.onrender.com";
-
-async function loginUser() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-
-    try {
-        const res = await fetch(`${API}/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email, password })
-        });
-
-        if (!res.ok) {
-            alert("Login failed");
-            return;
-        }
-
-        const data = await res.json();
-
-        // Save login
-        localStorage.setItem("user", JSON.stringify(data));
-
-        // Redirect
-        window.location.href = "dashboard.html";
-
-    } catch (err) {
-        alert("Backend not reachable");
-        console.error(err);
-    }
-}
-
-    document.getElementById("total").innerText = "₦" + data.total;
-    document.getElementById("avg").innerText = "₦" + data.average;
-    document.getElementById("trx").innerText = data.transactions;
-    document.getElementById("vat").innerText = "₦" + data.vat;
-    document.getElementById("wht").innerText = "₦" + data.wht;
-    document.getElementById("cit").innerText = "₦" + data.cit;
-    document.getElementById("ai").innerText = data.ai_insight;
-}
-</script>
+<h1>Welcome to Dashboard 🚀</h1>
 
 </body>
 </html>
