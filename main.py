@@ -4,7 +4,7 @@ import pandas as pd
 
 app = FastAPI()
 
-# Enable CORS
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,6 +16,16 @@ app.add_middleware(
 @app.get("/")
 def home():
     return {"message": "API is working"}
+
+@app.post("/login")
+def login(data: dict):
+    email = data.get("email")
+    password = data.get("password")
+
+    if email == "test@test.com" and password == "1234":
+        return {"status": "success"}
+    
+    return {"status": "failed"}
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
