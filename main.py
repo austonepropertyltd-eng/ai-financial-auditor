@@ -4,7 +4,7 @@ import pandas as pd
 
 app = FastAPI()
 
-# Allow frontend access
+# Allow frontend (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,57 +13,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Test route
 @app.get("/")
 def home():
-    return {"message": "API is working"}
+    return {"message": "API running"}
 
+
+# LOGIN ROUTE (simple demo)
 @app.post("/login")
 def login(data: dict):
     email = data.get("email")
     password = data.get("password")
 
+    # Simple test login
     if email == "test@test.com" and password == "1234":
         return {"status": "success"}
     
-    return {"status": "failed"}
+    return {"status": "error", "message": "Invalid login"}
 
+
+# ANALYZE ROUTE
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
-    try:
-        df = pd.read_excel(file.file)
+    df = pd.read_excel(file.file)
 
-        if "Amount" not in df.columns:
-            return {"error": "Missing 'Amount' column"}
+    total = df.sum().sum()
+    transactions = len(df)
+    average = total / transactions if transactions else 0
 
-        df["Amount"] = df["Amount"].astype(str).str.replace(",", "")
-        df["Amount"] = df["Amount"].astype(float)
+    vat = total * 0.075
+    wht = total * 0.05
+    cit = total * 0.30
 
-        total = df["Amount"].sum()
-        transactions = len(df)
-        average = total / transactions if transactions > 0 else 0
+    insight = f"""
+Analysis completed for {transactions} transactions.
+Total revenue: ₦{total:,.2f}
+VAT (7.5%): ₦{vat:,.2f}
+WHT (5%): ₦{wht:,.2f}
+CIT (30%): ₦{cit:,.2f}
 
-        vat = total * 0.075
-        wht = total * 0.05
-        cit = total * 0.30
+Insight: Your business shows strong financial activity. Ensure proper tax remittance and monitor high expense categories.
+"""
 
-        ai_insight = (
-            "Analysis completed for " + str(transactions) + " transactions.\n"
-            "Total revenue: ₦" + format(total, ",.2f") + "\n"
-            "VAT (7.5%): ₦" + format(vat, ",.2f") + "\n"
-            "WHT (5%): ₦" + format(wht, ",.2f") + "\n"
-            "CIT (30%): ₦" + format(cit, ",.2f") + "\n\n"
-            "Insight: Your business shows strong financial activity."
-        )
-
-        return {
-            "total": total,
-            "average": average,
-            "transactions": transactions,
-            "vat": vat,
-            "wht": wht,
-            "cit": cit,
-            "ai_insight": ai_insight
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
+    return {
+        "total": total,
+        "average": average,
+        "transactions": transactions,
+        "vat": vat,
+        "wht": wht,
+        "cit": cit,
+        "ai_insight": insight
+    }
