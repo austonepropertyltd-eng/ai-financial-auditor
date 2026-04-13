@@ -1,45 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Dashboard</title>
+    <title>Dashboard</title>
 </head>
 <body>
 
-<h2>VFG TaxRecon AI</h2>
+<h2>VFG TaxRecon AI Dashboard</h2>
 
 <input type="file" id="file">
 <button onclick="analyze()">Analyze</button>
 
-<h3>Total: <span id="total"></span></h3>
-<h3>Average: <span id="avg"></span></h3>
-<h3>Transactions: <span id="trx"></span></h3>
-<h3>VAT: <span id="vat"></span></h3>
-<h3>WHT: <span id="wht"></span></h3>
-<h3>CIT: <span id="cit"></span></h3>
+<p>Total: <span id="total"></span></p>
+<p>Average: <span id="avg"></span></p>
+<p>Transactions: <span id="trx"></span></p>
+<p>VAT: <span id="vat"></span></p>
+<p>WHT: <span id="wht"></span></p>
+<p>CIT: <span id="cit"></span></p>
 
-<p id="aiInsight"></p>
-
-<hr>
-
-<h3>Make Payment</h3>
-<input id="payEmail" placeholder="Email">
-<input id="amount" placeholder="Amount">
-
-<button onclick="pay()">Pay</button>
+<pre id="ai"></pre>
 
 <script>
+const API = "https://vfg-taxrecon.onrender.com";
 
 async function analyze() {
-    const fileInput = document.getElementById("file");
+    const file = document.getElementById("file").files[0];
     const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
+    formData.append("file", file);
 
-    let res = await fetch("https://YOUR_BACKEND_URL/analyze", {
+    const res = await fetch(API + "/analyze", {
         method: "POST",
         body: formData
     });
 
-    let data = await res.json();
+    const data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
 
     document.getElementById("total").innerText = "₦" + data.total;
     document.getElementById("avg").innerText = "₦" + data.average;
@@ -47,25 +45,8 @@ async function analyze() {
     document.getElementById("vat").innerText = "₦" + data.vat;
     document.getElementById("wht").innerText = "₦" + data.wht;
     document.getElementById("cit").innerText = "₦" + data.cit;
-
-    document.getElementById("aiInsight").innerText = data.ai_insight;
+    document.getElementById("ai").innerText = data.ai_insight;
 }
-
-async function pay() {
-    const formData = new FormData();
-    formData.append("email", document.getElementById("payEmail").value);
-    formData.append("amount", document.getElementById("amount").value);
-
-    let res = await fetch("https://ai-financial-auditor-5w4l.vercel.app/login", {
-        method: "POST",
-        body: formData
-    });
-
-    let data = await res.json();
-
-    window.location.href = data.data.authorization_url;
-}
-
 </script>
 
 </body>

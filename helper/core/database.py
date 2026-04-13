@@ -1,17 +1,53 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
 
-DATABASE_URL = "sqlite:///./taxrecon.db"
+<h2>VFG TaxRecon AI Dashboard</h2>
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+<input type="file" id="file">
+<button onclick="analyze()">Analyze</button>
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+<p>Total: <span id="total"></span></p>
+<p>Average: <span id="avg"></span></p>
+<p>Transactions: <span id="trx"></span></p>
+<p>VAT: <span id="vat"></span></p>
+<p>WHT: <span id="wht"></span></p>
+<p>CIT: <span id="cit"></span></p>
 
-Base = declarative_base()
+<pre id="ai"></pre>
+
+<script>
+const API = "https://YOUR-RENDER-URL.onrender.com";
+
+async function analyze() {
+    const file = document.getElementById("file").files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(API + "/analyze", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
+
+    document.getElementById("total").innerText = "₦" + data.total;
+    document.getElementById("avg").innerText = "₦" + data.average;
+    document.getElementById("trx").innerText = data.transactions;
+    document.getElementById("vat").innerText = "₦" + data.vat;
+    document.getElementById("wht").innerText = "₦" + data.wht;
+    document.getElementById("cit").innerText = "₦" + data.cit;
+    document.getElementById("ai").innerText = data.ai_insight;
+}
+</script>
+
+</body>
+</html>
